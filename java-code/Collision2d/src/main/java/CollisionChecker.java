@@ -3,83 +3,95 @@ import refac.BoxFactory;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 
 public class CollisionChecker {
 
-    static final String ANSI_RED = "\u001B[31m";
-    static final String ANSI_RESET = "\u001B[0m";
+    public static final Object lock = new Object();
 
     public static String jsonString;
-    public static void main(String[] args) {
 
-//                String test = "[" +
-//                "[[523.92236328125, 209.69586181640625]," +
-//                " [528.2108154296875, 211.55337524414062], " +
-//                "[576.489501953125, 100.0909423828125], " +
-//                "[572.2010498046875, 98.23342895507812]], " +
-//                "[[575.1689453125, 198.86827087402344], " +
-//                "[576.5592041015625, 193.8419952392578]," +
-//                " [447.2027282714844, 158.0636749267578], " +
-//                "[445.8125305175781, 163.08995056152344]]" +
-//                "]";
+    public static void main(String[] args) {
 
         BoxFactory boxFactory = BoxFactory.getInstance();
 
-        Thread t1 = new Thread(new SocketServer());
-        t1.start();
+        Thread socketThread = Thread.startVirtualThread(new SocketServer());
 
+        List<Box> boxes;
 
-//        List<Box> boxes = null;
-//        while(true) {
-//
-//
-//            if (jsonString == null) {
-//                continue;
-//            }
-//
-//            boxes = boxFactory.createBoxListFromJson(jsonString);
-//
-//            List<List<Box>> boxMatchups = new ArrayList<>();
-//
-//            for (int i = 0; i < boxes.size(); i++) {
-//                for (int j = i; j < boxes.size(); j++) {
-//                    if (i == j) {
-//                        continue;
-//                    }
-//
-//                    List<Box> matchup = new ArrayList<>();
-//                    matchup.add(boxes.get(i));
-//                    matchup.add(boxes.get(j));
-//
-//                    boxMatchups.add(matchup);
-//                }
-//            }
-//
-//            System.out.println(boxMatchups);
-//
-//
-//            // TODO 1 adding 3rd pipe f------ fixed
-//             // TODO 2 find out why not printing here.  Debug looks good for the checks.
-//            // TODO 3  make collision checks multithreaded and time them
-//            for (List<Box> pairOfBoxes : boxMatchups) {
-//                System.out.println(Box.checkBoxesForCollision(pairOfBoxes));
-//                System.out.flush();
-//                System.out.println("@@@@@@@@@@@@@@@@@@@@@");
-//                System.out.println("@@@@@@@@@@@@@@@@@@@@@");
-//
-//            }
-//        }
+        while (true) {
 
+            synchronized (lock) {
 
+                try {
+                    lock.wait();
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
 
+                // Wait for jsonString update from socketServer
+                if (jsonString == null) {
+                    continue;
+                }
 
+                boxes = boxFactory.createBoxListFromJson(jsonString);
 
+                List<List<Box>> boxMatchups = getBoxMatchups(boxes);
 
+                ExecutorService exec = Executors.newVirtualThreadPerTaskExecutor();
 
+                compareAllMatchups(boxMatchups, exec);
+
+                lock.notify();
+            }
+        }
     }
-    //new idea, get all pair matchups of boxes, their axis lists, then have each pair sent to Box.isOverlapping()
-    // with each on a different thread, to speed up calculation.
+
+    public static List<List<Box>> getBoxMatchups(List<Box> boxes) {
+
+        List<List<Box>> boxMatchups = new ArrayList<>();
+
+        for (int i = 0; i < boxes.size(); i++) {
+            for (int j = i + 1; j < boxes.size(); j++) {
+
+                List<Box> matchup = new ArrayList<>();
+                matchup.add(boxes.get(i));
+                matchup.add(boxes.get(j));
+
+                boxMatchups.add(matchup);
+            }
+        }
+
+        return boxMatchups;
+    }
+
+    // Take in list of all box pairs, then run their comparisons concurrently.
+    public static void compareAllMatchups(List<List<Box>> matchups, ExecutorService exec) {
+
+        long begin = System.nanoTime();
+
+        try (exec) {
+
+            List<Callable<Boolean>> tasks = new ArrayList<>();
+
+            for (List<Box> matchup : matchups) {
+                tasks.add(() -> Box.checkBoxesForCollision(matchup));
+            }
+
+            List<Future<Boolean>> results = exec.invokeAll(tasks);
+
+            for (Future<Boolean> result : results) {
+                if (result.get()) {
+
+                    System.out.println("----------------------- C O L L I S I O N ------------------------");
+                    return;
+                }
+            }
+
+            System.out.println("~~~~~~~ no collisions ~~~~~~~");
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 }

@@ -7,7 +7,7 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 
-// Singleton factory class for receiving and handling JSON bounding box data, and creating boxes from the Data.
+// Singleton factory class for creating list of boxes from json string.
 public class BoxFactory {
 
     private static BoxFactory instance;
@@ -27,18 +27,17 @@ public class BoxFactory {
     private final Gson gson = new Gson();
     private final Type BoxListType = new TypeToken<List<List<List<Double>>>>(){}.getType();
 
+    // Create list of bounding box objects from coordinates in the json string
     public List<Box> createBoxListFromJson(String boxesJson) {
 
         List<List<List<Double>>> boxesList = gson.fromJson(boxesJson, BoxListType);
         List<Box> boxObjectList = new ArrayList<>();
 
         for (List<List<Double>> boxPoints : boxesList) {
-
                 Box box = new Box(boxPoints);
                 boxObjectList.add(box);
-
         }
-//        System.out.println(boxObjectList);
+
         return boxObjectList;
     }
 }

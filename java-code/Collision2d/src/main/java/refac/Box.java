@@ -72,11 +72,7 @@ public class Box {
             Box box1 = boxes.get(i);
             List<Point> firstBoxAxes = boxes.get(i).getProjectionAxisList();
 
-            for (int j = i; j < boxes.size(); j++) {
-
-                if (i == j) {
-                    continue;
-                }
+            for (int j = i + 1; j < boxes.size(); j++) {
 
                 // Get the axes for box 2, then combine their axes lists.  They will both be projected onto all axes.
                 Box box2 = boxes.get(j);
@@ -100,11 +96,11 @@ public class Box {
         for (Point axis : combinedAxesList) {
             boolean collisionFound = false;
 
-            Double box1min;
-            Double box1max;
+            double box1min;
+            double box1max;
 
-            Double box2min;
-            Double box2max;
+            double box2min;
+            double box2max;
 
             //initialize min projection value for each box
             box1min = getDotProduct(box1.points.getFirst(), axis);
