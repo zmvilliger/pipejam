@@ -1,48 +1,52 @@
-import com.google.gson.Gson;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.List;
 
-public class SocketServer {
+public class SocketServer implements Runnable {
 
-
-    static String jsonLine;
-    private BoxData boxData;
-
-    public SocketServer(BoxData boxData) {
-        this.boxData = boxData;
-    }
-
-    public void runServer() {
-
+    // Creates a ServerSocket on port 7474, then calls connectClient()
+    public void run() {
         try (ServerSocket serverSocket = new ServerSocket(7474)) {
+
             System.out.println("Server listening on port 7474");
 
-            while (true) {
-                try (Socket socket = serverSocket.accept()) {
-                    System.out.println("Connected with client!");
-                    BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-
-                    StringBuilder jsonBuilder = new StringBuilder();
-
-                    while((jsonLine = in.readLine()) != null) {
-//                        System.out.println("received data: " + jsonLine);
-                        boxData = new BoxData();
-                        boxData.printCoords();
-
-
-                    }
-                }
-            }
+            connectClient(serverSocket);
 
         } catch (IOException e) {
-            throw new RuntimeException(e);
+           e.printStackTrace();
         }
     }
 
+    // Connects to client and then calls handleMessages() to handle incoming json data
+    private void connectClient(ServerSocket serverSocket) {
 
+        try (Socket socket = serverSocket.accept()) {
+
+            System.out.println("Connected with client!");
+            handleMessages(socket);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Receives json messages with bounding box data, updates static jsonString variable
+    private void handleMessages(Socket socket) {
+
+        try (BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
+            while((CollisionChecker.jsonString = in.readLine()) != null) {
+                synchronized (CollisionChecker.lock) {
+
+                    CollisionChecker.lock.notify();
+
+                    CollisionChecker.lock.wait();
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 }
