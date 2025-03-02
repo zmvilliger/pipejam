@@ -1,4 +1,4 @@
-package refac;
+package bbox;
 
 public class Point {
 

@@ -1,5 +1,5 @@
-import refac.Box;
-import refac.BoxFactory;
+import bbox.Box;
+import bbox.BoxFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -8,7 +8,6 @@ import java.util.concurrent.*;
 public class CollisionChecker {
 
     public static final Object lock = new Object();
-
     public static String jsonString;
 
     public static void main(String[] args) {
@@ -23,23 +22,20 @@ public class CollisionChecker {
 
             synchronized (lock) {
 
-                try {
-                    lock.wait();
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
-                }
-
                 // Wait for jsonString update from socketServer
                 if (jsonString == null) {
-                    continue;
+                    lock.notifyAll();
+                    try {
+                        lock.wait();
+                    } catch (InterruptedException e) {
+                        System.out.println(e.getMessage());
+                    }
                 }
 
                 boxes = boxFactory.createBoxListFromJson(jsonString);
-
                 List<List<Box>> boxMatchups = getBoxMatchups(boxes);
 
                 ExecutorService exec = Executors.newVirtualThreadPerTaskExecutor();
-
                 compareAllMatchups(boxMatchups, exec);
 
                 lock.notify();
@@ -53,25 +49,19 @@ public class CollisionChecker {
 
         for (int i = 0; i < boxes.size(); i++) {
             for (int j = i + 1; j < boxes.size(); j++) {
-
                 List<Box> matchup = new ArrayList<>();
                 matchup.add(boxes.get(i));
                 matchup.add(boxes.get(j));
-
                 boxMatchups.add(matchup);
             }
         }
-
         return boxMatchups;
     }
 
     // Take in list of all box pairs, then run their comparisons concurrently.
     public static void compareAllMatchups(List<List<Box>> matchups, ExecutorService exec) {
-
         long begin = System.nanoTime();
-
         try (exec) {
-
             List<Callable<Boolean>> tasks = new ArrayList<>();
 
             for (List<Box> matchup : matchups) {
@@ -82,16 +72,13 @@ public class CollisionChecker {
 
             for (Future<Boolean> result : results) {
                 if (result.get()) {
-
-                    System.out.println("----------------------- C O L L I S I O N ------------------------");
+                    System.out.println("====Collision detected====");
                     return;
                 }
             }
-
-            System.out.println("~~~~~~~ no collisions ~~~~~~~");
-
+            System.out.println("---clear---");
         } catch (Exception e) {
-            e.printStackTrace();
+            System.out.println(e.getMessage());
         }
     }
 }
