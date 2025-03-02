@@ -1,25 +1,25 @@
-package refac;
+package bbox;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class Box {
 
-    // How sensitive to collisions the detection is.  Higher = more sensitivity, but too high will lead to
-    // collision alert when objects don't yet touch.  recommended range: .95-1.0
+    /* How sensitive to collisions the detection is.  Higher = more sensitivity, but too high will lead to
+     collision alert when objects don't yet touch.  recommended range: .95-1.0 */
     public static float sensitivity = 1.00f;
 
     // Bounding box x and y point coordinates
-    private List<Point> points = new ArrayList<>();
+    private final List<Point> points = new ArrayList<>();
 
     // Hold the normalized axis for each box to be projected onto
-    private List<Point> projectionAxisList = new ArrayList<>();
+    private final List<Point> projectionAxisList = new ArrayList<>();
 
     // Constructor
     public Box(List<List<Double>> coords) {
 
-        for (int i = 0; i < coords.size(); i++) {
-            Point p = new Point(coords.get(i).get(0), coords.get(i).get(1));
+        for (List<Double> coord : coords) {
+            Point p = new Point(coord.get(0), coord.get(1));
             points.add(p);
         }
 
@@ -30,9 +30,9 @@ public class Box {
     private void populateAxisList() {
 
         // Values for surface normal vector
-        Double projectionX;
-        Double projectionY;
-        Double magnitude;
+        double projectionX;
+        double projectionY;
+        double magnitude;
 
         // To get surface normal vectors, swap x and y values of each point, and make one negative
         for (int i = 0; i < points.size(); i++) {
@@ -44,11 +44,10 @@ public class Box {
                 projectionY = points.get(i).x - points.get(i - 1).x;
             }
 
-
             // get magnitude of surface normal
             magnitude = (Math.sqrt(Math.pow(projectionX, 2) + Math.pow(projectionY, 2)));
 
-            // normalize projection axis
+            // normalize the axis to 0 - 1.0
             projectionX *= 1.0 / magnitude;
             projectionY *= 1.0 / magnitude;
 
@@ -63,9 +62,10 @@ public class Box {
             return false;
         }
 
-        // Check every possible pair of boxes' projections against each other using the projectionAxisList of both boxes.
-        // If separation is found between two boxes then they are not colliding.  If separation is not found
-        // between the projections of two boxes, a collision exists and this function should return true.
+        /* Check every possible pair of boxes' projections against each other using the projectionAxisList of both
+           boxes.  If separation is found between two boxes then they are not colliding.  If separation is not found
+           between the projections of two boxes, a collision exists and this function should return true.
+         */
         for (int i = 0; i < boxes.size(); i++) {
 
             // Get the axes from box 1
@@ -109,7 +109,6 @@ public class Box {
             box2min = getDotProduct(box2.points.getFirst(), axis);
             box2max = box2min;
 
-
             for (Point p : box1.points) {
 
                 // Project the point onto the axis, update min and max values
@@ -149,9 +148,7 @@ public class Box {
     }
 
     private static Double getDotProduct(Point boxPoint, Point axisPoint) {
-
         return (boxPoint.x * axisPoint.x) + (boxPoint.y * axisPoint.y);
-
     }
 
     public List<Point> getProjectionAxisList() {
