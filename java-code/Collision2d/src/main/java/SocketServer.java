@@ -20,8 +20,10 @@ public class SocketServer implements Runnable {
     // Tries to connect client and then calls handleMessages() to handle incoming json data
     private void connectClient(ServerSocket serverSocket) {
         while (true) {
+
             try (Socket socket = serverSocket.accept()) {
                 System.out.println("Connected with client!");
+                socket.setReceiveBufferSize(2048);
                 handleMessages(socket);
             } catch (IOException e) {
                 System.out.println(e.getMessage());
@@ -32,7 +34,7 @@ public class SocketServer implements Runnable {
     // Receives json messages with bounding box data, updates static jsonString variable
     private void handleMessages(Socket socket) {
 
-        try (BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
+        try (BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()), 2048)) {
             while ((CollisionChecker.jsonString = in.readLine()) != null) {
                 synchronized (CollisionChecker.lock) {
                     CollisionChecker.lock.notify();
